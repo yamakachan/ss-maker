@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SS作成メーカー</title>
+<meta name="theme-color" content="#457B9D">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="SS MAKER">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --desk-base:#ECEAF0; --paper:#FDFCF9; --inset:#FFFFFF;
+  --ink:#45434D; --ink-soft:#77737F; --ink-faint:#ABA7B2;
+  --line:#E4E2E8;
+  --on-fill:#FFFFFF;
+  --font:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",sans-serif;
+  --latin:"Outfit","Zen Kaku Gothic New",sans-serif;
+  /* パレット（01_input/カラーパレットマスタ.csv）: main=蛍光ペン・帯 / sub=記入欄 / acc=保存ボタン */
+  --main:#A8DADC; --sub:#F1FAEE; --acc:#457B9D;           /* 50 雨上がり */
+}
+:root[data-palette="asayake"]{ --main:#FFC8DD; --sub:#EAF4FF; --acc:#D9779F; }   /* 29 儚い朝焼け */
+:root[data-palette="kikyou"]{  --main:#9A8C98; --sub:#F2E9E4; --acc:#4A4E69; }   /* 44 桔梗と墨 */
+:root[data-palette="wagashi"]{ --main:#E9EDC9; --sub:#FEFAE0; --acc:#B07F45; }   /* 43 和菓子カラー */
+:root[data-palette="gekkou"]{  --main:#CED4DA; --sub:#F1F3F5; --acc:#495057; }   /* 20 月光グレー */
+:root[data-palette="brown"]{   --main:#C6AC8F; --sub:#EAE0D5; --acc:#5E503F; }   /* 13 クラシックブラウン */
+:root[data-palette="seiji"]{   --main:#84A98C; --sub:#E6ECE3; --acc:#354F52; }   /* 56 青磁 */
+:root[data-palette="ichigo"]{  --main:#FFB3C1; --sub:#FFF0F3; --acc:#E63946; }   /* 62 いちごミルク */
+:root{
+  --desk:color-mix(in srgb,var(--main) 16%,var(--desk-base));
+  --hover:color-mix(in srgb,var(--main) 14%,transparent);
+  --topbar-bg:color-mix(in srgb,var(--desk) 90%,transparent);
+  --marker:color-mix(in srgb,var(--main) 70%,transparent);
+  --note-bg:color-mix(in srgb,var(--sub) 55%,var(--paper));
+  --note-line:color-mix(in srgb,var(--sub) 50%,var(--ink) 14%);
+  --note-border:color-mix(in srgb,var(--sub) 70%,var(--ink) 12%);
+  --acc-ink:color-mix(in srgb,var(--acc) 85%,var(--ink));
+}
+:root[data-theme="dark"]{
+  --desk-base:#1E1C23; --paper:#2A2830; --inset:#232128;
+  --ink:#ECEAF0; --ink-soft:#B6B2BD; --ink-faint:#7E7A86;
+  --line:#3A3741;
+  --note-bg:color-mix(in srgb,var(--sub) 9%,var(--paper));
+  --note-line:color-mix(in srgb,var(--sub) 18%,var(--paper));
+  --note-border:color-mix(in srgb,var(--sub) 24%,var(--paper));
+  --acc-ink:color-mix(in srgb,var(--acc) 60%,#fff);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;letter-spacing:.02em;font-family:var(--font);color:var(--ink);background:var(--desk);line-height:1.7;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;min-height:100dvh;}
+::selection{background:var(--marker);color:var(--ink);}
+button,input,textarea,select{font-family:inherit;}
+button{cursor:pointer;}
+
+/* ---- 上の帯 ---- */
+.topbar{position:sticky;top:0;z-index:40;background:var(--topbar-bg);backdrop-filter:blur(8px);display:flex;align-items:center;gap:8px;padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top));}
+.brand{margin-right:auto;display:flex;align-items:baseline;gap:10px;}
+.brand b{font-family:var(--latin);font-size:14px;font-weight:700;letter-spacing:.06em;}
+.saved{font-family:var(--latin);font-size:11.5px;color:var(--ink-faint);}
+.saved.dirty{color:var(--acc-ink);font-weight:600;}
+.tbtn{font-size:12px;font-weight:500;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);}
+.tbtn:hover{border-color:var(--main);color:var(--ink);}
+.tbtn.save{background:var(--acc);border-color:var(--acc);color:var(--on-fill);font-weight:700;}
+.tbtn.save:hover{opacity:.9;}
+
+/* ---- 見出し ---- */
+.head{display:flex;align-items:center;gap:16px;max-width:1080px;margin:0 auto;padding:22px 16px 18px;}
+.title{display:flex;align-items:center;gap:12px;}
+.title .en{font-family:var(--latin);font-weight:700;text-transform:uppercase;letter-spacing:.01em;font-size:32px;line-height:1.05;}
+.title .logo{color:var(--ink);flex-shrink:0;}
+
+/* ---- レイアウト ---- */
+.layout{display:grid;grid-template-columns:180px minmax(0,1fr);gap:22px;max-width:1080px;margin:0 auto;padding:0 16px 120px;align-items:start;}
+.side{position:sticky;top:64px;display:flex;flex-direction:column;gap:4px;}
+.tab{text-align:left;font-size:13px;font-weight:500;padding:9px 14px;border:none;border-radius:999px;background:transparent;color:var(--ink-soft);display:flex;align-items:center;gap:8px;}
+.tab svg{width:16px;height:16px;flex-shrink:0;}
+.tab:hover{background:var(--hover);color:var(--ink);}
+.tab.active{background:var(--paper);color:var(--ink);font-weight:700;box-shadow:0 1px 0 var(--line);}
+.content{min-width:0;}
+.view{display:none;}
+.view.active{display:block;}
+@media (max-width:760px){
+  .layout{grid-template-columns:1fr;gap:10px;padding-bottom:calc(90px + env(safe-area-inset-bottom));}
+  .side{position:fixed;left:0;right:0;bottom:0;top:auto;z-index:40;flex-direction:row;justify-content:space-around;gap:0;padding:6px 10px calc(6px + env(safe-area-inset-bottom));background:var(--topbar-bg);backdrop-filter:blur(8px);border-top:1px solid var(--line);}
+  .tab{flex:1;flex-direction:column;gap:2px;font-size:10.5px;padding:6px 4px;border-radius:12px;}
+  .tab svg{width:20px;height:20px;}
+  .tab.active{box-shadow:none;}
+  .title .en{font-size:26px;}
+  .head{padding:14px 16px 10px;}
+}
+
+/* ---- ノートの1ページ ---- */
+.page{position:relative;background:var(--paper);border-radius:6px 18px 18px 6px;box-shadow:0 1px 0 var(--line),0 10px 30px rgba(80,60,100,.10);padding:20px clamp(16px,4vw,34px) 24px;overflow:hidden;}
+.page::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:repeating-linear-gradient(to bottom,var(--main) 0 10px,transparent 10px 18px);opacity:.8;}
+.date-band{display:flex;align-items:center;gap:14px;background:color-mix(in srgb,var(--main) 12%,var(--paper));border-radius:4px;padding:8px 14px;margin:0 0 16px;}
+.date-band .lbl{font-family:var(--latin);font-weight:600;font-size:11px;letter-spacing:.2em;text-transform:uppercase;padding:0 3px;background:linear-gradient(transparent 50%,var(--marker) 50%,var(--marker) 92%,transparent 92%);}
+.date-band .val{font-family:var(--latin);font-size:17px;font-weight:700;letter-spacing:.04em;}
+.date-band .val .dow{font-size:12px;letter-spacing:.14em;color:var(--ink-soft);margin-left:6px;font-weight:600;}
+.date-band .work{margin-left:auto;font-size:11.5px;color:var(--ink-soft);padding:2px 10px;border-radius:999px;background:var(--paper);}
+
+.ttl{width:100%;border:none;border-bottom:1.5px solid var(--line);background:transparent;color:var(--ink);font-size:20px;font-weight:700;padding:4px 2px 8px;outline:none;line-height:1.4;}
+.ttl:focus{border-bottom-color:var(--acc);}
+.ttl::placeholder{color:var(--ink-faint);font-weight:500;}
+
+/* 本文：最初は2行ぶんの小さな箱。書くほど伸びる。pre（色つき）の上に透明な textarea を重ねる */
+.editor{position:relative;margin-top:14px;border-radius:14px;border:1.5px solid transparent;background:var(--note-bg);transition:border-color .15s;}
+.editor:focus-within{border-color:var(--note-border);}
+.editor .hl,.editor textarea{
+  margin:0;display:block;width:100%;min-height:72px;
+  padding:12px 16px;border:none;outline:none;border-radius:14px;
+  font-family:var(--font);font-size:15px;line-height:1.9;letter-spacing:.02em;
+  white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-all;tab-size:4;
+}
+.editor .hl{position:absolute;inset:0;pointer-events:none;color:var(--ink);overflow:hidden;}
+.editor textarea{position:relative;background:transparent;color:transparent;caret-color:var(--ink);resize:none;overflow:hidden;-webkit-text-fill-color:transparent;}
+.editor textarea::placeholder{color:var(--ink-faint);-webkit-text-fill-color:var(--ink-faint);}
+.hl .n{font-weight:700;}
+.hl .f{color:var(--acc-ink);font-weight:600;}
+.hl .br{color:var(--ink-soft);}
+.hl .c{color:var(--ink-faint);}
+.hl .ck{color:var(--acc-ink);font-weight:600;opacity:.75;}
+.hl .nar{color:var(--ink);}
+.hl .q{color:var(--ink);}
+
+/* 下の情報：文字数は左下に小さく。タグ・メモは押した時だけ欄が出る */
+.under{display:flex;align-items:center;gap:14px;margin:6px 4px 0;min-height:22px;}
+.counts{font-family:var(--latin);font-size:12px;color:var(--ink-faint);}
+.counts b{font-weight:600;color:var(--ink-soft);}
+.ghost{border:none;background:transparent;color:var(--ink-faint);font-size:12px;padding:2px 6px;border-radius:999px;}
+.ghost:hover{color:var(--ink);background:var(--hover);}
+.ghost.hide{display:none;}
+.tags,.memo{display:none;}
+.tags.open,.memo.open{display:flex;}
+.memo.open{display:block;}
+.tags{flex-wrap:wrap;gap:6px;align-items:center;min-height:30px;margin-top:8px;}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:3px 6px 3px 10px;border-radius:999px;background:color-mix(in srgb,var(--main) 30%,var(--paper));color:var(--ink);}
+.chip button{border:none;background:transparent;color:var(--ink-soft);font-size:14px;line-height:1;padding:0 4px;}
+.chip button:hover{color:var(--acc-ink);}
+.tags input{flex:1;min-width:90px;border:none;background:transparent;color:var(--ink);font-size:13px;padding:4px 2px;outline:none;}
+.tags input::placeholder{color:var(--ink-faint);}
+.memo{width:100%;border:none;border-bottom:1px dashed var(--line);background:transparent;color:var(--ink);font-size:13.5px;padding:4px 2px;outline:none;margin-top:8px;}
+.memo:focus{border-bottom-color:var(--acc);}
+.memo::placeholder{color:var(--ink-faint);}
+.foot{display:flex;align-items:center;gap:10px;margin-top:22px;}
+.btn{font-size:13px;font-weight:600;padding:9px 20px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);}
+.btn:hover{border-color:var(--main);color:var(--ink);}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:var(--on-fill);font-weight:700;}
+.btn.primary:hover{opacity:.9;}
+.btn.danger{border-color:transparent;color:var(--ink-faint);margin-left:auto;}
+.btn.danger:hover{color:#C1121F;border-color:#C1121F;}
+.btn.danger.arm{color:#fff;background:#C1121F;border-color:#C1121F;}
+.hint{font-size:11.5px;color:var(--ink-faint);margin-left:auto;font-family:var(--latin);}
+@media (max-width:760px){ .hint{display:none;} }
+
+/* ---- 一覧 ---- */
+.list-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.list-head h2{margin:0;font-size:15px;font-weight:700;margin-right:auto;}
+.item{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--inset);border-radius:12px;padding:12px 14px;margin-bottom:8px;color:var(--ink);}
+.item:hover{border-color:var(--main);}
+.item.current{border-color:var(--acc);}
+.item .t{font-size:15px;font-weight:700;display:flex;align-items:baseline;gap:8px;}
+.item .t small{font-family:var(--latin);font-size:11px;color:var(--ink-faint);font-weight:500;margin-left:auto;white-space:nowrap;}
+.item .m{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.item .p{font-size:12.5px;color:var(--ink-soft);margin-top:6px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line;}
+.item .b{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+.item .b .chip{font-size:11px;padding:2px 9px;}
+.item .b .cnt{font-family:var(--latin);font-size:11px;color:var(--ink-faint);margin-left:auto;}
+.empty{text-align:center;color:var(--ink-faint);font-size:14px;padding:50px 10px;}
+
+/* ---- 設定 ---- */
+.set-h{margin:18px 0 8px;font-size:12.5px;font-weight:700;color:var(--ink-soft);}
+.set-h:first-child{margin-top:0;}
+.palettes{display:flex;gap:8px;flex-wrap:wrap;}
+.pal{display:flex;align-items:center;gap:7px;padding:6px 12px 6px 8px;border-radius:999px;border:1px solid var(--line);background:var(--inset);color:var(--ink-soft);font-size:12px;}
+.pal i{display:flex;}
+.pal i b{width:14px;height:14px;border-radius:50%;margin-right:-4px;border:1.5px solid var(--inset);}
+.pal.active{border-color:var(--acc);color:var(--ink);font-weight:700;}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.note{font-size:12.5px;color:var(--ink-soft);line-height:1.7;margin:6px 0 0;}
+.card{border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--inset);font-size:13px;line-height:1.7;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start;}
+.card[hidden]{display:none;}
+.card b{font-weight:700;}
+.card button{border:none;background:transparent;color:var(--ink-faint);font-size:18px;line-height:1;margin-left:auto;padding:0 2px;}
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(10px);background:var(--ink);color:var(--paper);font-size:13px;padding:8px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:.2s;z-index:60;}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+@media (min-width:761px){ .toast{bottom:24px;} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><b>SS MAKER</b><span class="saved" id="savedState"></span></div>
+  <button class="tbtn save" id="saveTop">保存</button>
+</header>
+
+<div class="head">
+  <div class="title">
+    <svg class="logo" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 20l-7 2 2-7L17.5 4.5a2.1 2.1 0 0 1 3 3L12 20z"/><path d="M15 7l2 2"/><path d="M5 22l7-2"/>
+    </svg>
+    <span class="en">SS Maker.</span>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="side">
+    <button class="tab active" data-view="write">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20l-7 2 2-7L17.5 4.5a2.1 2.1 0 0 1 3 3L12 20z"/></svg>書く</button>
+    <button class="tab" data-view="list">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 6h14M5 12h14M5 18h9"/></svg>一覧</button>
+    <button class="tab" data-view="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>設定</button>
+  </nav>
+
+  <main class="content">
+
+    <!-- 書く -->
+    <section class="view active" id="view-write">
+      <div class="card" id="pwaCard" hidden>
+        <div><b>ホーム画面に追加</b>すると、アプリとして開けて、書いたものが消えにくくなる。<br>Safariの共有ボタン → 「ホーム画面に追加」。</div>
+        <button id="pwaClose" aria-label="閉じる">×</button>
+      </div>
+      <div class="page">
+        <div class="date-band">
+          <span class="lbl">Date</span>
+          <span class="val" id="dateVal"></span>
+          <span class="work" id="workName"></span>
+        </div>
+        <input class="ttl" id="title" placeholder="タイトル" autocomplete="off">
+        <div class="editor">
+          <pre class="hl" id="hl" aria-hidden="true"></pre>
+          <textarea id="body" spellcheck="false" autocapitalize="off"></textarea>
+        </div>
+        <div class="under">
+          <span class="counts"><b id="cntBody">0</b> 字</span>
+          <button class="ghost" id="tagOpen">＋タグ</button>
+          <button class="ghost" id="memoOpen">＋メモ</button>
+        </div>
+        <div class="tags" id="tags"><input id="tagInput" placeholder="タグ" list="tagList" autocomplete="off"><datalist id="tagList"></datalist></div>
+        <input class="memo" id="memo" placeholder="一言メモ" autocomplete="off">
+        <div class="foot">
+          <button class="btn primary" id="saveBtn">保存</button>
+          <button class="btn" id="newBtn">新しいSS</button>
+          <span class="hint">⌘ + Enter で保存</span>
+          <button class="btn danger" id="delBtn">削除</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 一覧 -->
+    <section class="view" id="view-list">
+      <div class="page">
+        <div class="list-head"><h2 id="listCount"></h2><button class="btn primary" id="newBtn2">新しいSS</button></div>
+        <div id="list"></div>
+      </div>
+    </section>
+
+    <!-- 設定 -->
+    <section class="view" id="view-settings">
+      <div class="page">
+        <div class="set-h">色</div>
+        <div class="palettes" id="palettes"></div>
+        <div class="set-h">ひる／よる</div>
+        <div class="row">
+          <button class="btn" data-theme="light">ひる</button>
+          <button class="btn" data-theme="dark">よる</button>
+        </div>
+        <div class="set-h">別の端末へ</div>
+        <div class="row">
+          <button class="btn" id="exportBtn">書き出し</button>
+          <button class="btn" id="importBtn">読み込み</button>
+          <input type="file" id="importFile" accept="application/json,.json" hidden>
+        </div>
+        <p class="note" id="storageNote"></p>
+        <div class="set-h">書き方</div>
+        <p class="note">
+          <code>丹緒（笑）「おはよう」</code> → 名前（差分名）「セリフ」<br>
+          <code>　雨が窓を叩いている。</code> → 地の文<br>
+          <code>@背景 教室</code>　<code>@BGM 雨の日</code>　<code>@BGM 止める</code>　<code>@退場 丹緒</code><br>
+          空行で場面の区切り。
+        </p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   行頭ルールの解釈（エディタの色分けと、将来のノベルゲーム出力で同じものを使う）
+   ========================================================= */
+const RULE = {
+  // 名前（差分）「セリフ」 / 名前「セリフ」 / 名前(差分)"セリフ"
+  dialogue: /^([^\s@「」"（）()　]{1,12})[ 　]*(?:[（(]([^）)]{1,12})[）)])?[ 　]*([「"].*)$/,
+  command: /^@([^\s　]+)[ 　]*(.*)$/
+};
+function parseLine(line){
+  let m;
+  if((m = RULE.command.exec(line)))  return {type:'cmd', key:m[1], arg:m[2], raw:line};
+  if((m = RULE.dialogue.exec(line))) return {type:'say', name:m[1], face:m[2]||null, text:m[3], raw:line};
+  if(line.trim()==='')               return {type:'blank', raw:line};
+  return {type:'nar', text:line, raw:line};
+}
+function parseBody(body){ return body.split('\n').map(parseLine); }
+
+/* 文字数：本文＝名前・差分名・@命令・括弧を除いた「読む文字」 / 全体＝@命令以外の全部。どちらも空白・改行は数えない */
+const strip = s => s.replace(/[\s　]/g,'');
+function countChars(body){
+  let b=0, a=0;
+  for(const ln of parseBody(body)){
+    if(ln.type==='cmd' || ln.type==='blank') continue;
+    a += strip(ln.raw).length;
+    if(ln.type==='say') b += strip(ln.text.replace(/^[「"]|[」"]$/g,'')).length;
+    else b += strip(ln.text).length;
+  }
+  return {body:b, all:a};
+}
+
+/* 色分け */
+const esc = s => s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function highlight(body){
+  return parseBody(body).map(ln=>{
+    if(ln.type==='cmd'){
+      const m = RULE.command.exec(ln.raw);
+      return `<span class="c">@<span class="ck">${esc(m[1])}</span>${esc(ln.raw.slice(1+m[1].length))}</span>`;
+    }
+    if(ln.type==='say'){
+      const m = RULE.dialogue.exec(ln.raw);
+      const name=m[1], face=m[2], rest=m[3];
+      const i1 = ln.raw.indexOf(name)+name.length;
+      const i2 = ln.raw.indexOf(rest);
+      const mid = ln.raw.slice(i1,i2); // （差分）と空白
+      let midHtml = esc(mid);
+      if(face){ midHtml = midHtml.replace(esc(face), `<span class="f">${esc(face)}</span>`); midHtml = `<span class="br">${midHtml}</span>`; }
+      return `<span class="n">${esc(name)}</span>${midHtml}<span class="q">${esc(rest)}</span>`;
+    }
+    if(ln.type==='blank') return '';
+    return `<span class="nar">${esc(ln.raw)}</span>`;
+  }).join('\n') + '\n';
+}
+
+/* =========================================================
+   保存係（データの形は固定。保存先だけ差し替えられる）
+   ========================================================= */
+const DATA_KEY='ssmaker.v1', SET_KEY='ssmaker.settings';
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const now = () => new Date().toISOString();
+
+const LocalStorageStore = {
+  load(){
+    try{ const d=JSON.parse(localStorage.getItem(DATA_KEY)); if(d && d.version===1) return d; }catch(e){}
+    return null;
+  },
+  save(data){ localStorage.setItem(DATA_KEY, JSON.stringify(data)); },
+  usage(){ let n=0; for(const k in localStorage){ if(Object.prototype.hasOwnProperty.call(localStorage,k)) n += (localStorage[k].length + k.length)*2; } return n; }
+};
+const store = LocalStorageStore;
+
+function blankData(){
+  const w = {id:uid('w_'), name:'作品1', author:'', notice:'', characters:[], backgrounds:[], bgms:[]};
+  return {version:1, works:[w], stories:[]};
+}
+let data = store.load() || blankData();
+if(!data.works.length) data.works.push(blankData().works[0]);
+let settings = {}; try{ settings = JSON.parse(localStorage.getItem(SET_KEY)) || {}; }catch(e){}
+function saveSettings(){ localStorage.setItem(SET_KEY, JSON.stringify(settings)); }
+
+/* =========================================================
+   画面
+   ========================================================= */
+const $ = id => document.getElementById(id);
+const el = {
+  title:$('title'), body:$('body'), hl:$('hl'), memo:$('memo'), tags:$('tags'), tagInput:$('tagInput'), tagList:$('tagList'),
+  cntBody:$('cntBody'), dateVal:$('dateVal'), workName:$('workName'),
+  saved:$('savedState'), list:$('list'), listCount:$('listCount'), toast:$('toast'), delBtn:$('delBtn')
+};
+let current = null;   // 今開いているSS
+let dirty = false, saveTimer = null;
+
+const PLACEHOLDERS = ['コーヒーブレイクはいかが？','最初の一行だけでいい。','今日の天気から書いてみる。','セリフひとつ、置いてみる。','続きは明日でもいい。'];
+
+function fmtDate(iso){
+  const d = iso ? new Date(iso) : new Date();
+  const p = n => String(n).padStart(2,'0');
+  const dow = ['SUN','MON','TUE','WED','THU','FRI','SAT'][d.getDay()];
+  return `${d.getFullYear()}/${p(d.getMonth()+1)}/${p(d.getDate())}<span class="dow">${dow}</span>`;
+}
+function fmtTime(iso){ const d=new Date(iso); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function fmtShort(iso){ const d=new Date(iso); return `${d.getMonth()+1}/${d.getDate()} ${fmtTime(iso)}`; }
+function toast(msg){ el.toast.textContent=msg; el.toast.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(()=>el.toast.classList.remove('on'),1600); }
+
+function newStory(){
+  return {id:uid('s_'), workId:data.works[0].id, title:'', body:'', tags:[], memo:'', createdAt:now(), updatedAt:now()};
+}
+function open(story){
+  flush();
+  current = story;
+  el.title.value = story.title;
+  el.body.value = story.body;
+  el.body.placeholder = PLACEHOLDERS[Math.floor(Math.random()*PLACEHOLDERS.length)];
+  el.memo.value = story.memo;
+  el.workName.textContent = (data.works.find(w=>w.id===story.workId)||data.works[0]).name;
+  renderTags(); render(); setSaved(false);
+  openExtras();
+  settings.lastId = story.id; saveSettings();
+}
+function render(){
+  const body = el.body.value;
+  el.hl.innerHTML = highlight(body);
+  el.body.style.height = 'auto';
+  el.body.style.height = Math.max(72, el.hl.scrollHeight) + 'px';
+  const c = countChars(body);
+  el.cntBody.textContent = c.body.toLocaleString();
+  el.dateVal.innerHTML = fmtDate(current.updatedAt);
+}
+/* タグ・メモ：中身がある時だけ欄を出す。空なら「＋タグ」「＋メモ」だけ */
+function openExtras(forceTag, forceMemo){
+  const t = forceTag || current.tags.length>0, m = forceMemo || !!current.memo;
+  el.tags.classList.toggle('open', t);  $('tagOpen').classList.toggle('hide', t);
+  el.memo.classList.toggle('open', m);  $('memoOpen').classList.toggle('hide', m);
+}
+$('tagOpen').onclick  = ()=>{ openExtras(true,false); el.tagInput.focus(); };
+$('memoOpen').onclick = ()=>{ openExtras(false,true); el.memo.focus(); };
+el.tagInput.addEventListener('blur', ()=>setTimeout(()=>{ if(!current.tags.length && !el.tagInput.value) openExtras(); },150));
+el.memo.addEventListener('blur', ()=>{ if(!el.memo.value) openExtras(); });
+function renderTags(){
+  el.tags.querySelectorAll('.chip').forEach(c=>c.remove());
+  current.tags.forEach(t=>{
+    const chip = document.createElement('span'); chip.className='chip';
+    chip.innerHTML = `${esc(t)}<button aria-label="外す">×</button>`;
+    chip.querySelector('button').onclick = ()=>{ current.tags = current.tags.filter(x=>x!==t); renderTags(); markDirty(); if(!current.tags.length) openExtras(true,false); };
+    el.tags.insertBefore(chip, el.tagInput);
+  });
+  const all = new Set(); data.stories.forEach(s=>s.tags.forEach(t=>all.add(t)));
+  el.tagList.innerHTML = [...all].filter(t=>!current.tags.includes(t)).map(t=>`<option value="${esc(t)}">`).join('');
+}
+function addTag(raw){
+  raw.split(/[,、\s　]+/).map(s=>s.replace(/^#/,'').trim()).filter(Boolean).forEach(t=>{
+    if(!current.tags.includes(t)) current.tags.push(t);
+  });
+  el.tagInput.value=''; renderTags(); markDirty();
+}
+
+function setSaved(isDirty){
+  dirty = isDirty;
+  el.saved.className = 'saved' + (isDirty?' dirty':'');
+  el.saved.textContent = isDirty ? '● 未保存' : (current && current.updatedAt ? `saved ${fmtTime(current.updatedAt)}` : '');
+}
+function markDirty(){
+  setSaved(true);
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>save(true), 1000);
+}
+function isEmpty(s){ return !s.title.trim() && !s.body.trim() && !s.tags.length && !s.memo.trim(); }
+function save(auto){
+  if(!current) return;
+  current.title = el.title.value; current.body = el.body.value; current.memo = el.memo.value;
+  if(isEmpty(current)){ setSaved(false); return; }       // 空のSSは保存しない（一覧を汚さない）
+  current.updatedAt = now();
+  if(!data.stories.includes(current)) data.stories.unshift(current);
+  store.save(data);
+  setSaved(false);
+  el.dateVal.innerHTML = fmtDate(current.updatedAt);
+  if(!auto) toast('保存した');
+}
+function flush(){ if(dirty){ clearTimeout(saveTimer); save(true); } }
+
+/* 一覧 */
+function renderList(){
+  const items = [...data.stories].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+  el.listCount.textContent = items.length ? `${items.length} 本` : '';
+  if(!items.length){ el.list.innerHTML = `<div class="empty">まだ何もない。「新しいSS」から。</div>`; return; }
+  el.list.innerHTML = items.map(s=>{
+    const c = countChars(s.body);
+    const preview = s.body.split('\n').filter(l=>parseLine(l).type!=='cmd' && l.trim()).slice(0,3).join('\n');
+    return `<button class="item${current&&s.id===current.id?' current':''}" data-id="${s.id}">
+      <div class="t">${esc(s.title)||'<span style="color:var(--ink-faint)">（無題）</span>'}<small>${fmtShort(s.updatedAt)}</small></div>
+      ${s.memo?`<div class="m">${esc(s.memo)}</div>`:''}
+      ${preview?`<div class="p">${esc(preview)}</div>`:''}
+      <div class="b">${s.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join('')}<span class="cnt">${c.body.toLocaleString()} 字</span></div>
+    </button>`;
+  }).join('');
+  el.list.querySelectorAll('.item').forEach(b=>b.onclick=()=>{ open(data.stories.find(s=>s.id===b.dataset.id)); showView('write'); });
+}
+
+/* タブ */
+function showView(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.view===name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
+  if(name==='list'){ flush(); renderList(); }
+  if(name==='settings'){ flush(); renderStorage(); }
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>showView(t.dataset.view));
+
+/* 設定：色・ひるよる */
+const PALETTES = [
+  {id:'',        name:'雨上がり',   c:['#A8DADC','#F1FAEE','#457B9D']},
+  {id:'asayake', name:'儚い朝焼け', c:['#FFC8DD','#EAF4FF','#D9779F']},
+  {id:'ichigo',  name:'いちごミルク',c:['#FFB3C1','#FFF0F3','#E63946']},
+  {id:'wagashi', name:'和菓子',     c:['#E9EDC9','#FEFAE0','#B07F45']},
+  {id:'seiji',   name:'青磁',       c:['#84A98C','#E6ECE3','#354F52']},
+  {id:'brown',   name:'ブラウン',   c:['#C6AC8F','#EAE0D5','#5E503F']},
+  {id:'kikyou',  name:'桔梗と墨',   c:['#9A8C98','#F2E9E4','#4A4E69']},
+  {id:'gekkou',  name:'月光グレー', c:['#CED4DA','#F1F3F5','#495057']},
+];
+function applySettings(){
+  if(settings.palette) document.documentElement.dataset.palette = settings.palette; else delete document.documentElement.dataset.palette;
+  if(settings.theme) document.documentElement.dataset.theme = settings.theme; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('.pal').forEach(p=>p.classList.toggle('active', (p.dataset.id||'')===(settings.palette||'')));
+  document.querySelectorAll('[data-theme]').forEach(b=>b.classList.toggle('primary', b.dataset.theme===(settings.theme||'light')));
+  document.querySelector('meta[name=theme-color]').content = getComputedStyle(document.documentElement).getPropertyValue('--acc').trim();
+}
+$('palettes').innerHTML = PALETTES.map(p=>`<button class="pal" data-id="${p.id}"><i>${p.c.map(c=>`<b style="background:${c}"></b>`).join('')}</i>${p.name}</button>`).join('');
+document.querySelectorAll('.pal').forEach(p=>p.onclick=()=>{ settings.palette=p.dataset.id; saveSettings(); applySettings(); });
+document.querySelectorAll('[data-theme]').forEach(b=>b.onclick=()=>{ settings.theme=b.dataset.theme; saveSettings(); applySettings(); });
+if(!settings.theme && matchMedia('(prefers-color-scheme: dark)').matches) settings.theme='dark';
+applySettings();
+
+/* 設定：書き出し／読み込み */
+function renderStorage(){
+  const kb = Math.round(store.usage()/1024);
+  $('storageNote').textContent = `SS ${data.stories.length} 本・ブラウザ内の保存 ${kb.toLocaleString()} KB。書き出した .json を別の端末で読み込むと、同じSSはより新しい方が残る。`;
+}
+$('exportBtn').onclick = ()=>{
+  flush();
+  const blob = new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  const d = new Date(), p=n=>String(n).padStart(2,'0');
+  a.download = `ssmaker_${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}.json`;
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  toast('書き出した');
+};
+$('importBtn').onclick = ()=>$('importFile').click();
+$('importFile').onchange = async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const inc = JSON.parse(await f.text());
+    if(inc.version!==1 || !Array.isArray(inc.stories)) throw 0;
+    let added=0, updated=0;
+    inc.works.forEach(w=>{ if(!data.works.find(x=>x.id===w.id)) data.works.push(w); });
+    inc.stories.forEach(s=>{
+      const cur = data.stories.find(x=>x.id===s.id);
+      if(!cur){ data.stories.push(s); added++; }
+      else if(s.updatedAt > cur.updatedAt){ Object.assign(cur, s); updated++; }
+    });
+    store.save(data); renderStorage();
+    toast(`読み込んだ：新しく ${added}・更新 ${updated}`);
+    if(current && !isEmpty(current)) open(data.stories.find(s=>s.id===current.id)||current);
+  }catch(err){ toast('読み込めなかった（SS作成メーカーの .json ではない）'); }
+  e.target.value='';
+};
+
+/* 入力 */
+el.body.addEventListener('input', ()=>{ render(); markDirty(); });
+el.title.addEventListener('input', markDirty);
+el.memo.addEventListener('input', markDirty);
+el.tagInput.addEventListener('keydown', e=>{
+  if(e.key==='Enter' || e.key===',' || e.key==='、'){ e.preventDefault(); addTag(el.tagInput.value); }
+  else if(e.key==='Backspace' && !el.tagInput.value && current.tags.length){ current.tags.pop(); renderTags(); markDirty(); }
+});
+el.tagInput.addEventListener('blur', ()=>{ if(el.tagInput.value.trim()) addTag(el.tagInput.value); });
+el.tagInput.addEventListener('change', ()=>{ if(el.tagInput.value.trim()) addTag(el.tagInput.value); });
+document.addEventListener('keydown', e=>{
+  if((e.metaKey||e.ctrlKey) && (e.key==='Enter' || e.key==='s')){ e.preventDefault(); save(false); }
+});
+$('saveBtn').onclick = $('saveTop').onclick = ()=>save(false);
+$('newBtn').onclick = $('newBtn2').onclick = ()=>{ open(newStory()); showView('write'); el.title.focus(); };
+
+/* 削除：1回目で赤くなる、2回目で消す */
+let armTimer=null;
+el.delBtn.onclick = ()=>{
+  if(!el.delBtn.classList.contains('arm')){
+    el.delBtn.classList.add('arm'); el.delBtn.textContent='本当に削除';
+    armTimer = setTimeout(disarm, 3000); return;
+  }
+  disarm();
+  data.stories = data.stories.filter(s=>s!==current);
+  store.save(data);
+  toast('削除した');
+  open(data.stories[0] || newStory());
+};
+function disarm(){ clearTimeout(armTimer); el.delBtn.classList.remove('arm'); el.delBtn.textContent='削除'; }
+
+/* 画面を離れる時・隠れた時に保存 */
+addEventListener('visibilitychange', ()=>{ if(document.hidden) flush(); });
+addEventListener('pagehide', flush);
+addEventListener('resize', ()=>{ if(current) render(); });
+
+/* ホーム画面に追加の案内（iPhoneのSafariで、まだアプリとして開いていない時だけ） */
+(function(){
+  const ios = /iP(hone|ad|od)/.test(navigator.userAgent);
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  if(ios && !standalone && !settings.pwaHintClosed) $('pwaCard').hidden=false;
+  $('pwaClose').onclick = ()=>{ $('pwaCard').hidden=true; settings.pwaHintClosed=true; saveSettings(); };
+})();
+
+/* 起動 */
+open(data.stories.find(s=>s.id===settings.lastId) || [...data.stories].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0] || newStory());
+if('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
